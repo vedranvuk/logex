@@ -25,8 +25,91 @@ var (
 	ErrUnmarshalLevel = ErrLog.Wrap("error unmarshaling '%s' as loglevel")
 )
 
+const (
+	// KeyTime specifies that field carries a timestamp value.
+	KeyTime = "time"
+	// KeyMessage specifies that field carries the log message.
+	KeyMessage = "message"
+	// KeyLogLevel specifies that field carries the log level value.
+	KeyLogLevel = "loglevel"
+	// KeyError specifies that field carries an error value.
+	KeyError = "error"
+	// KeyFrames
+	KeyFrames = "frames"
+	// KeyFile specifies that field carries name of file, possibly a caller.
+	KeyFile = "file"
+	// KeyLine specifies that field carries number of line, probably of caller.
+	KeyLine = "line"
+	// KeyFnc
+	KeyFunc = "func"
+)
+
 // Fields maps keys to values in a log line.
 type Fields map[string]interface{}
+
+// Time returns Time field.
+func (f Fields) Time() time.Time {
+	if time, ok := (f[KeyTime]).(time.Time); ok {
+		return time
+	}
+	return time.Time{}
+}
+
+// Message returns message field.
+func (f Fields) Message() string {
+	if message, ok := (f[KeyMessage]).(string); ok {
+		return message
+	}
+	return ""
+}
+
+// Message returns log level field.
+func (f Fields) LogLevel() LogLevel {
+	if loglevel, ok := (f[KeyLogLevel]).(LogLevel); ok {
+		return loglevel
+	}
+	return LevelNone
+}
+
+// Message returns error field.
+func (f Fields) Error() error {
+	if err, ok := (f[KeyError]).(error); ok {
+		return err
+	}
+	return nil
+}
+
+// Frames returns frames.
+func (f Fields) Frames() []Fields {
+	if fields, ok := (f[KeyFrames]).([]Fields); ok {
+		return fields
+	}
+	return nil
+}
+
+// File returns file field.
+func (f Fields) File() string {
+	if file, ok := (f[KeyFile]).(string); ok {
+		return file
+	}
+	return ""
+}
+
+// Line returns line field.
+func (f Fields) Line() int {
+	if line, ok := (f[KeyLine]).(int); ok {
+		return line
+	}
+	return 0
+}
+
+// Func returns func field.
+func (f Fields) Func() string {
+	if fun, ok := (f[KeyFunc]).(string); ok {
+		return fun
+	}
+	return ""
+}
 
 // Log is the public interface to Logger.
 type Log interface {
@@ -55,21 +138,25 @@ type Formatter interface {
 type LogLevel byte
 
 const (
-	// LevelDebug is the debug logging level.
-	// It should contain verbose debugging information that is useful in debugging.
-	LevelDebug LogLevel = iota
-	// LevelInfo is the info logging level.
-	// It should include information notices that might be useful to user.
-	LevelInfo
-	// LevelWarning is the warning logging level that might be important to user.
-	LevelWarning
-	// LevelError is the error logging level that contains important error information.
-	LevelError
-	// LevelPrint is the print logging level that is always printed, unless LevelMute.
-	LevelPrint
+	// LevelNone is undefined.
+	LevelNone LogLevel = iota
 	// LevelMute is the silent logging level.
 	// It is used to silence the logger.
 	LevelMute
+	// LevelError is the error logging level that contains important error information.
+	LevelError
+	// LevelWarning is the warning logging level that might be important to user.
+	LevelWarning
+	// LevelInfo is the info logging level.
+	// It should include information notices that might be useful to user.
+	LevelInfo
+	// LevelDebug is the debug logging level.
+	// It should contain verbose debugging information that is useful in debugging.
+	LevelDebug
+	// LevelPrint is the print logging level that is always printed, unless LevelMute.
+	LevelPrint
+	// LevelCustom and above is a custom logging level.
+	LevelCustom
 )
 
 // String implements the Stringer interface.
@@ -119,12 +206,16 @@ type Logger struct {
 
 	mu  sync.Mutex
 	wrs map[io.Writer]Formatter
+	lvl LogLevel
 }
 
 // print prints fields to registered writers using associated formatters.
 func (l *Logger) print(fields Fields) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if fields.LogLevel() > l.lvl {
+		return
+	}
 	for writer, formatter := range l.wrs {
 		writer.Write([]byte(formatter.Format(fields)))
 	}
@@ -143,6 +234,7 @@ func New() *Logger {
 	p := &Logger{
 		mu:  sync.Mutex{},
 		wrs: make(map[io.Writer]Formatter),
+		lvl: LevelDebug,
 	}
 	p.Log = NewLine(p)
 	return p
@@ -154,21 +246,6 @@ func NewStd() *Logger {
 	p.AddOutput(os.Stdout, NewSimpleFormatter())
 	return p
 }
-
-const (
-	// KeyTime specifies that field carries a timestamp value.
-	KeyTime = "time"
-	// KeyMessage specifies that field carries the log message.
-	KeyMessage = "message"
-	// KeyLogLevel specifies that field carries the log level value.
-	KeyLogLevel = "loglevel"
-	// KeyError specifies that field carries an error value.
-	KeyError = "error"
-	// KeyFile specifies that field carries name of file, possibly a caller.
-	KeyFile = "file"
-	// KeyLine specifies that field carries number of line, probably of caller.
-	KeyLine = "line"
-)
 
 // Line defines a log line of fields gained from logging calls which
 // are passed to a Logger that converts them to log lines using a Formatter.
@@ -185,8 +262,8 @@ func NewLine(l *Logger) *Line {
 	}
 }
 
-// output outputs line fields to the Logger.
-func (p *Line) output(level LogLevel, message string) {
+// flush outputs line fields to the Logger.
+func (p *Line) flush(level LogLevel, message string) {
 	p.fields[KeyTime] = time.Now()
 	p.fields[KeyMessage] = message
 	p.fields[KeyLogLevel] = level
@@ -195,45 +272,45 @@ func (p *Line) output(level LogLevel, message string) {
 }
 
 func (p *Line) Debugf(format string, args ...interface{}) {
-	p.output(LevelDebug, fmt.Sprintf(format, args...))
+	p.flush(LevelDebug, fmt.Sprintf(format, args...))
 }
 
 func (p *Line) Debugln(args ...interface{}) {
-	p.output(LevelDebug, fmt.Sprint(args...)+"\n")
+	p.flush(LevelDebug, fmt.Sprint(args...)+"\n")
 }
 
 func (p *Line) Infof(format string, args ...interface{}) {
-	p.output(LevelInfo, fmt.Sprintf(format, args...))
+	p.flush(LevelInfo, fmt.Sprintf(format, args...))
 }
 
 func (p *Line) Infoln(args ...interface{}) {
-	p.output(LevelInfo, fmt.Sprint(args...)+"\n")
+	p.flush(LevelInfo, fmt.Sprint(args...)+"\n")
 }
 
 func (p *Line) Warningf(format string, args ...interface{}) {
-	p.output(LevelWarning, fmt.Sprintf(format, args...))
+	p.flush(LevelWarning, fmt.Sprintf(format, args...))
 }
 
 func (p *Line) Warningln(args ...interface{}) {
-	p.output(LevelWarning, fmt.Sprint(args...)+"\n")
+	p.flush(LevelWarning, fmt.Sprint(args...)+"\n")
 }
 
 func (p *Line) Errorf(err error, format string, args ...interface{}) {
 	p.fields[KeyError] = err
-	p.output(LevelError, fmt.Sprintf(format, args...))
+	p.flush(LevelError, fmt.Sprintf(format, args...))
 }
 
 func (p *Line) Errorln(err error, args ...interface{}) {
 	p.fields[KeyError] = err
-	p.output(LevelError, fmt.Sprint(args...)+"\n")
+	p.flush(LevelError, fmt.Sprint(args...)+"\n")
 }
 
 func (p *Line) Printf(format string, args ...interface{}) {
-	p.output(LevelPrint, fmt.Sprintf(format, args...))
+	p.flush(LevelPrint, fmt.Sprintf(format, args...))
 }
 
 func (p *Line) Println(args ...interface{}) {
-	p.output(LevelPrint, fmt.Sprint(args...)+"\n")
+	p.flush(LevelPrint, fmt.Sprint(args...)+"\n")
 }
 
 // Caller appends the caller fields to the Line.
@@ -249,22 +326,28 @@ func (p *Line) Caller(skip int) Log {
 // Stack appends the stack to the Line.
 func (p *Line) Stack(skip, depth int) Log {
 	callers := make([]uintptr, depth)
-	fn := runtime.Callers(skip, callers)
-	fmt.Println(fn)
-	frames := runtime.CallersFrames(callers)
-	for i := 0; i < depth; i++ {
-		frame, more := frames.Next()
-		p.fields[fmt.Sprintf("frame.%0d.file", i)] = frame.File
-		p.fields[fmt.Sprintf("frame.%0d.line", i)] = frame.Line
-		p.fields[fmt.Sprintf("frame.%0d.func", i)] = frame.Function
-		if !more {
-			break
+	if runtime.Callers(skip, callers) > 0 {
+		frames := runtime.CallersFrames(callers)
+		frameslice := []Fields{}
+		for i := 0; i < depth; i++ {
+			frame, more := frames.Next()
+			f := Fields{
+				KeyFile: frame.File,
+				KeyLine: frame.Line,
+				KeyFunc: frame.Func.Name(),
+			}
+
+			frameslice = append(frameslice, f)
+			if !more {
+				break
+			}
 		}
+		p.fields[KeyFrames] = frameslice
 	}
 	return p
 }
 
-// Fields appends specified fields to Line.
+// Fields appends custom fields to Line.
 func (p *Line) Fields(fields Fields) Log {
 	for key, val := range fields {
 		p.fields[key] = val
@@ -277,12 +360,32 @@ type SimpleFormatter struct{}
 
 // Format implements Formatter interface.
 func (sf SimpleFormatter) Format(fields Fields) string {
-	s := ""
-	for key, val := range fields {
-		if s != "" {
-			s += " "
+
+	const TimeStampFormat = "2006-02-01 15:04:05"
+
+	s := fields.Time().Format(TimeStampFormat)
+	switch fields.LogLevel() {
+	case LevelError:
+		s += " EROR"
+	case LevelWarning:
+		s += " WARN"
+	case LevelInfo:
+		s += " INFO"
+	case LevelDebug:
+		s += " DEBG"
+	}
+	s += " "
+	s += fields.Message()
+	if err := fields.Error(); err != nil {
+		s += fmt.Sprintf("\t%v\n", err)
+	}
+	if file := fields.File(); file != "" {
+		s += fmt.Sprintf("\t%s (%d)\n", fields.File(), fields.Line())
+	}
+	if frames := fields.Frames(); frames != nil {
+		for _, frame := range frames {
+			s += fmt.Sprintf("\t%s (%d)\n\t\t%s\n", frame[KeyFile], frame[KeyLine], frame[KeyFunc])
 		}
-		s += fmt.Sprintf("\"%s\"=\"%v\"", key, val)
 	}
 	return s
 }
@@ -293,37 +396,24 @@ func NewSimpleFormatter() Formatter {
 }
 
 // JSONFormatter formats key/value pairs into a JSON string.
-type JSONFormatter struct{}
+type JSONFormatter struct{ indent bool }
 
 // Format implements Formatter interface.
 func (jf *JSONFormatter) Format(fields Fields) string {
-	buf, err := json.Marshal(fields)
+	var buf []byte
+	var err error
+	if jf.indent {
+		buf, err = json.MarshalIndent(fields, "", "\t")
+	} else {
+		buf, err = json.Marshal(fields)
+	}
 	if err != nil {
 		return err.Error()
 	}
-	return string(buf)
+	return string(buf) + "\n"
 }
 
 // NewJSONFormatter returns a new JSONFormatter.
-func NewJSONFormatter() Formatter {
-	return &JSONFormatter{}
-}
-
-// CSVFormatter formats key/value pairs into CSV data.
-type CSVFormatter struct{}
-
-// Format implements Formatter interface.
-func (cf *CSVFormatter) Format(fields Fields) string {
-	return ""
-}
-
-// LogFormatter formats key/value pairs into generalized log lines.
-type LogFormatter struct{}
-
-// Format implements Formatter interface.
-func (tf *LogFormatter) Format(fields Fields) string {
-
-	const DefTimestamp = "2006-02-01 15:04:05"
-
-	return ""
+func NewJSONFormatter(indent bool) Formatter {
+	return &JSONFormatter{indent}
 }
