@@ -22,7 +22,7 @@ var (
 	// ErrLog is a base error of log package.
 	ErrLog = errorex.New("log")
 	// ErrUnmarshalLevel is returned when unmarshaling an invalid value from text as LogLevel.
-	ErrUnmarshalLevel = ErrLog.Wrap("error unmarshaling '%s' as loglevel")
+	ErrUnmarshalLevel = ErrLog.WrapFormat("error unmarshaling '%s' as loglevel")
 )
 
 const (
@@ -227,6 +227,13 @@ func (l *Logger) AddOutput(w io.Writer, f Formatter) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.wrs[w] = f
+}
+
+// SetLevel sets Logger's LogLevel.
+func (l *Logger) SetLevel(level LogLevel) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.lvl = level
 }
 
 // New returns a new Logger with no defined outputs.
