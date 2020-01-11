@@ -143,6 +143,8 @@ const (
 	// LevelMute is the silent logging level.
 	// It is used to silence the logger.
 	LevelMute
+	// LevelPrint is the print logging level that is always printed, unless LevelMute.
+	LevelPrint
 	// LevelError is the error logging level that contains important error information.
 	LevelError
 	// LevelWarning is the warning logging level that might be important to user.
@@ -153,8 +155,6 @@ const (
 	// LevelDebug is the debug logging level.
 	// It should contain verbose debugging information that is useful in debugging.
 	LevelDebug
-	// LevelPrint is the print logging level that is always printed, unless LevelMute.
-	LevelPrint
 	// LevelCustom and above is a custom logging level.
 	LevelCustom
 )
