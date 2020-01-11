@@ -1,0 +1,1 @@
+logex is a logging package with somewhat more control than the stdlib log package and is largely inspired by the logrus README file.

@@ -130,7 +130,7 @@ type Log interface {
 
 // Formatter is an interface to a type that formats a map of key/value pairs to a log message.
 type Formatter interface {
-	// Format must return a string representation of key/value pairs.
+	// Format must return a string representation of key/value pairs, such as JSON object, CSV, custom.
 	Format(Fields) string
 }
 
@@ -200,7 +200,7 @@ func (ll *LogLevel) UnmarshalText(text []byte) error {
 	return nil
 }
 
-// Logger logs.
+// Logger is an implementation of Log.
 type Logger struct {
 	Log
 
@@ -247,8 +247,8 @@ func NewStd() *Logger {
 	return p
 }
 
-// Line defines a log line of fields gained from logging calls which
-// are passed to a Logger that converts them to log lines using a Formatter.
+// Line defines a log line consisting of fields populted by logging calls which
+// are ultimately passed to a Logger that converts them to log lines using a Formatter.
 type Line struct {
 	log    *Logger
 	fields Fields
@@ -395,7 +395,7 @@ func NewSimpleFormatter() Formatter {
 	return &SimpleFormatter{}
 }
 
-// JSONFormatter formats key/value pairs into a JSON string.
+// JSONFormatter formats key/value pairs into a string of JSON object.
 type JSONFormatter struct{ indent bool }
 
 // Format implements Formatter interface.
