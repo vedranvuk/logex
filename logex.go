@@ -195,7 +195,7 @@ func (ll *LogLevel) UnmarshalText(text []byte) error {
 	case "print":
 		*ll = LevelPrint
 	default:
-		return ErrUnmarshalLevel.WithArgs(string(text))
+		return ErrUnmarshalLevel.WrapArgs(string(text))
 	}
 	return nil
 }
