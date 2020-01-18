@@ -259,6 +259,7 @@ func NewStd() *Logger {
 type Line struct {
 	log    *Logger
 	fields Fields
+	mu     sync.Mutex
 }
 
 // NewLine returns a new Line instance that will output to Logger l.
@@ -266,11 +267,14 @@ func NewLine(l *Logger) *Line {
 	return &Line{
 		log:    l,
 		fields: make(Fields),
+		mu:     sync.Mutex{},
 	}
 }
 
 // flush outputs line fields to the Logger.
 func (p *Line) flush(level LogLevel, message string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.fields[KeyTime] = time.Now()
 	p.fields[KeyMessage] = message
 	p.fields[KeyLogLevel] = level
