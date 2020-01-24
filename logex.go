@@ -273,8 +273,6 @@ func NewLine(l *Logger) *Line {
 
 // flush outputs line fields to the Logger.
 func (p *Line) flush(level LogLevel, message string) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
 	p.fields[KeyTime] = time.Now()
 	p.fields[KeyMessage] = message
 	p.fields[KeyLogLevel] = level
@@ -283,49 +281,71 @@ func (p *Line) flush(level LogLevel, message string) {
 }
 
 func (p *Line) Debugf(format string, args ...interface{}) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.flush(LevelDebug, fmt.Sprintf(format, args...))
 }
 
 func (p *Line) Debugln(args ...interface{}) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.flush(LevelDebug, fmt.Sprint(args...)+"\n")
 }
 
 func (p *Line) Infof(format string, args ...interface{}) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.flush(LevelInfo, fmt.Sprintf(format, args...))
 }
 
 func (p *Line) Infoln(args ...interface{}) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.flush(LevelInfo, fmt.Sprint(args...)+"\n")
 }
 
 func (p *Line) Warningf(format string, args ...interface{}) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.flush(LevelWarning, fmt.Sprintf(format, args...))
 }
 
 func (p *Line) Warningln(args ...interface{}) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.flush(LevelWarning, fmt.Sprint(args...)+"\n")
 }
 
 func (p *Line) Errorf(err error, format string, args ...interface{}) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.fields[KeyError] = err
 	p.flush(LevelError, fmt.Sprintf(format, args...))
 }
 
 func (p *Line) Errorln(err error, args ...interface{}) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.fields[KeyError] = err
 	p.flush(LevelError, fmt.Sprint(args...)+"\n")
 }
 
 func (p *Line) Printf(format string, args ...interface{}) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.flush(LevelPrint, fmt.Sprintf(format, args...))
 }
 
 func (p *Line) Println(args ...interface{}) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.flush(LevelPrint, fmt.Sprint(args...)+"\n")
 }
 
 // Caller appends the caller fields to the Line.
 func (p *Line) Caller(skip int) Log {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	_, file, line, ok := runtime.Caller(skip)
 	if ok {
 		p.fields[KeyFile] = file
@@ -336,6 +356,8 @@ func (p *Line) Caller(skip int) Log {
 
 // Stack appends the stack to the Line.
 func (p *Line) Stack(skip, depth int) Log {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	callers := make([]uintptr, depth)
 	if runtime.Callers(skip, callers) > 0 {
 		frames := runtime.CallersFrames(callers)
@@ -360,6 +382,8 @@ func (p *Line) Stack(skip, depth int) Log {
 
 // Fields appends custom fields to Line.
 func (p *Line) Fields(fields Fields) Log {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	for key, val := range fields {
 		p.fields[key] = val
 	}
