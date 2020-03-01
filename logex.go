@@ -6,7 +6,6 @@
 package logex
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -23,93 +22,9 @@ var (
 	ErrLog = errorex.New("log")
 	// ErrUnmarshalLevel is returned when unmarshaling an invalid value from text as LogLevel.
 	ErrUnmarshalLevel = ErrLog.WrapFormat("error unmarshaling '%s' as loglevel")
+	// ErrReservedKey
+	ErrReservedKey = ErrLog.WrapFormat("cannot set field '%s', key is reserved")
 )
-
-const (
-	// KeyTime specifies that field carries a timestamp value.
-	KeyTime = "time"
-	// KeyMessage specifies that field carries the log message.
-	KeyMessage = "message"
-	// KeyLogLevel specifies that field carries the log level value.
-	KeyLogLevel = "loglevel"
-	// KeyError specifies that field carries an error value.
-	KeyError = "error"
-	// KeyFrames
-	KeyFrames = "frames"
-	// KeyFile specifies that field carries name of file, possibly a caller.
-	KeyFile = "file"
-	// KeyLine specifies that field carries number of line, probably of caller.
-	KeyLine = "line"
-	// KeyFnc
-	KeyFunc = "func"
-)
-
-// Fields maps keys to values in a log line.
-type Fields map[string]interface{}
-
-// Time returns Time field.
-func (f Fields) Time() time.Time {
-	if time, ok := (f[KeyTime]).(time.Time); ok {
-		return time
-	}
-	return time.Time{}
-}
-
-// Message returns message field.
-func (f Fields) Message() string {
-	if message, ok := (f[KeyMessage]).(string); ok {
-		return message
-	}
-	return ""
-}
-
-// Message returns log level field.
-func (f Fields) LogLevel() LogLevel {
-	if loglevel, ok := (f[KeyLogLevel]).(LogLevel); ok {
-		return loglevel
-	}
-	return LevelNone
-}
-
-// Message returns error field.
-func (f Fields) Error() error {
-	if err, ok := (f[KeyError]).(error); ok {
-		return err
-	}
-	return nil
-}
-
-// Frames returns frames.
-func (f Fields) Frames() []Fields {
-	if fields, ok := (f[KeyFrames]).([]Fields); ok {
-		return fields
-	}
-	return nil
-}
-
-// File returns file field.
-func (f Fields) File() string {
-	if file, ok := (f[KeyFile]).(string); ok {
-		return file
-	}
-	return ""
-}
-
-// Line returns line field.
-func (f Fields) Line() int {
-	if line, ok := (f[KeyLine]).(int); ok {
-		return line
-	}
-	return 0
-}
-
-// Func returns func field.
-func (f Fields) Func() string {
-	if fun, ok := (f[KeyFunc]).(string); ok {
-		return fun
-	}
-	return ""
-}
 
 // Log is the public interface to Logger.
 type Log interface {
@@ -126,12 +41,6 @@ type Log interface {
 	Caller(int) Log
 	Stack(int, int) Log
 	Fields(Fields) Log
-}
-
-// Formatter is an interface to a type that formats a map of key/value pairs to a log message.
-type Formatter interface {
-	// Format must return a string representation of key/value pairs, such as JSON object, CSV, custom.
-	Format(Fields) string
 }
 
 // LogLevel defines a logging level for a Logger.
@@ -388,67 +297,4 @@ func (p *Line) Fields(fields Fields) Log {
 		p.fields[key] = val
 	}
 	return p
-}
-
-// SimpleFormatter appends key/value pairs alphabetically to returned string.
-type SimpleFormatter struct{}
-
-// Format implements Formatter interface.
-func (sf SimpleFormatter) Format(fields Fields) string {
-
-	const TimeStampFormat = "2006-02-01 15:04:05"
-
-	s := fields.Time().Format(TimeStampFormat)
-	switch fields.LogLevel() {
-	case LevelError:
-		s += " EROR"
-	case LevelWarning:
-		s += " WARN"
-	case LevelInfo:
-		s += " INFO"
-	case LevelDebug:
-		s += " DEBG"
-	}
-	s += " "
-	s += fields.Message()
-	if err := fields.Error(); err != nil {
-		s += fmt.Sprintf("\t%v\n", err)
-	}
-	if file := fields.File(); file != "" {
-		s += fmt.Sprintf("\t%s (%d)\n", fields.File(), fields.Line())
-	}
-	if frames := fields.Frames(); frames != nil {
-		for _, frame := range frames {
-			s += fmt.Sprintf("\t%s (%d)\n\t\t%s\n", frame[KeyFile], frame[KeyLine], frame[KeyFunc])
-		}
-	}
-	return s
-}
-
-// NewSimpleFormatter returns a new SimpleFormatter.
-func NewSimpleFormatter() Formatter {
-	return &SimpleFormatter{}
-}
-
-// JSONFormatter formats key/value pairs into a string of JSON object.
-type JSONFormatter struct{ indent bool }
-
-// Format implements Formatter interface.
-func (jf *JSONFormatter) Format(fields Fields) string {
-	var buf []byte
-	var err error
-	if jf.indent {
-		buf, err = json.MarshalIndent(fields, "", "\t")
-	} else {
-		buf, err = json.Marshal(fields)
-	}
-	if err != nil {
-		return err.Error()
-	}
-	return string(buf) + "\n"
-}
-
-// NewJSONFormatter returns a new JSONFormatter.
-func NewJSONFormatter(indent bool) Formatter {
-	return &JSONFormatter{indent}
 }

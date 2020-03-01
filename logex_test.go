@@ -1,3 +1,7 @@
+// Copyright 2019 Vedran Vuk. All rights reserved.
+// Use of this source code is governed by a MIT
+// license that can be found in the LICENSE file.
+
 package logex
 
 import (
@@ -36,4 +40,13 @@ func TestLog3(t *testing.T) {
 	l := NewStd()
 	l.SetLevel(LevelError)
 	l.Println("testis")
+}
+
+func TestLog4(t *testing.T) {
+	l := New()
+	l.AddOutput(os.Stdout, NewJSONFormatter(true))
+	l.SetLevel(LevelPrint)
+	f := make(Fields)
+	f.Set("mirko", "odora")
+	l.Fields(f).Println("test")
 }
