@@ -31,3 +31,9 @@ func TestLog2(t *testing.T) {
 	l.AddOutput(os.Stdout, NewJSONFormatter(true))
 	DoLog(l)
 }
+
+func TestLog3(t *testing.T) {
+	l := NewStd()
+	l.SetLevel(LevelError)
+	l.Println("testis")
+}

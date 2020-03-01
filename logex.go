@@ -143,8 +143,6 @@ const (
 	// LevelMute is the silent logging level.
 	// It is used to silence the logger.
 	LevelMute
-	// LevelPrint is the print logging level that is always printed, unless LevelMute.
-	LevelPrint
 	// LevelError is the error logging level that contains important error information.
 	LevelError
 	// LevelWarning is the warning logging level that might be important to user.
@@ -157,6 +155,8 @@ const (
 	LevelDebug
 	// LevelCustom and above is a custom logging level.
 	LevelCustom
+	// LevelPrint is the print logging level that is always printed, unless LevelMute.
+	LevelPrint = LogLevel(255)
 )
 
 // String implements the Stringer interface.
@@ -273,9 +273,9 @@ func NewLine(l *Logger) *Line {
 
 // flush outputs line fields to the Logger.
 func (p *Line) flush(level LogLevel, message string) {
-	p.fields[KeyTime] = time.Now()
-	p.fields[KeyMessage] = message
 	p.fields[KeyLogLevel] = level
+	p.fields[KeyMessage] = message
+	p.fields[KeyTime] = time.Now()
 	p.log.print(p.fields)
 	p.fields = make(Fields)
 }
