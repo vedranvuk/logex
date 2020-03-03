@@ -12,7 +12,7 @@ import (
 // Formatter formats Fields to a custom format.
 type Formatter interface {
 	// Format must return a string representation of key/value pairs, such as JSON object, CSV, custom.
-	Format(Fields) string
+	Format(*Fields) string
 }
 
 // SimpleFormatter sorts Fields alphabetically and appends them as "key"="value" pairs separated by space.
@@ -22,23 +22,23 @@ type SimpleFormatter struct{}
 func NewSimpleFormatter() Formatter { return &SimpleFormatter{} }
 
 // Format implements Formatter interface.
-func (sf SimpleFormatter) Format(fields Fields) string {
+func (sf SimpleFormatter) Format(fields *Fields) string {
 
 	const TimeStampFormat = "2006-02-01 15:04:05"
 
-	s := fields.Time().Format(TimeStampFormat)
-	switch fields.LogLevel() {
-	case LevelError:
-		s += " EROR"
-	case LevelWarning:
-		s += " WARN"
-	case LevelInfo:
-		s += " INFO"
-	case LevelDebug:
-		s += " DEBG"
+	s := fmt.Sprintf("[%s] %s: %s",
+		fields.Time().Format(TimeStampFormat),
+		fields.LogLevel(),
+		fields.Message())
+	f := fields.Custom()
+	if f.Len() > 0 {
+		fs := ""
+		f.Walk(func(key FieldKey, val interface{}) bool {
+			fs += fmt.Sprintf("\"%s\"=\"%v\"", key, val)
+			return true
+		})
+		s += fs + "\n"
 	}
-	s += " "
-	s += fields.Message()
 	if err := fields.Error(); err != nil {
 		s += fmt.Sprintf("\t%v\n", err)
 	}
@@ -47,7 +47,7 @@ func (sf SimpleFormatter) Format(fields Fields) string {
 	}
 	if frames := fields.Frames(); frames != nil {
 		for _, frame := range frames {
-			s += fmt.Sprintf("\t%s (%d)\n\t\t%s\n", frame[KeyFile], frame[KeyLine], frame[KeyFunc])
+			s += fmt.Sprintf("\t%s (%d)\n\t\t%s\n", frame.File(), frame.Line(), frame.Func())
 		}
 	}
 	return s
@@ -60,7 +60,7 @@ type JSONFormatter struct{ indent bool }
 func NewJSONFormatter(indent bool) Formatter { return &JSONFormatter{indent} }
 
 // Format implements Formatter interface.
-func (jf *JSONFormatter) Format(fields Fields) string {
+func (jf *JSONFormatter) Format(fields *Fields) string {
 	var buf []byte
 	var err error
 	if jf.indent {

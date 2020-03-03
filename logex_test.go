@@ -10,9 +10,31 @@ import (
 	"testing"
 )
 
+func TestLogLevel(t *testing.T) {
+	testfunc := func(level LogLevel) {
+		b, err := level.MarshalText()
+		if err != nil {
+			t.Fatal(err)
+		}
+		level = LevelMute
+		if err := level.UnmarshalText(b); err != nil {
+			t.Fatal(err)
+		}
+	}
+	testfunc(LevelNone)
+	testfunc(LevelMute)
+	testfunc(LevelError)
+	testfunc(LevelWarning)
+	testfunc(LevelInfo)
+	testfunc(LevelDebug)
+	testfunc(LevelPrint)
+	testfunc(LogLevel(42))
+}
+
 func DoLog(l Log) {
-	l.Printf("%s\n", "Printf")
-	l.Println("Println")
+	lvl := LogLevel(42)
+	l.Printf(lvl, "%s\n", "Printf")
+	l.Println(lvl, "Println")
 	l.Debugf("%s\n", "Debug")
 	l.Debugln("Debugln")
 	l.Infof("%s\n", "Info")
@@ -27,6 +49,7 @@ func DoLog(l Log) {
 
 func TestLog(t *testing.T) {
 	l := NewStd()
+	l.SetLevel(LevelPrint)
 	DoLog(l)
 }
 
@@ -39,14 +62,49 @@ func TestLog2(t *testing.T) {
 func TestLog3(t *testing.T) {
 	l := NewStd()
 	l.SetLevel(LevelError)
-	l.Println("testis")
+	l.Println(42, "testis")
 }
 
 func TestLog4(t *testing.T) {
-	l := New()
-	l.AddOutput(os.Stdout, NewJSONFormatter(true))
+	l := NewStd()
 	l.SetLevel(LevelPrint)
-	f := make(Fields)
+	f := NewFields()
 	f.Set("mirko", "odora")
-	l.Fields(f).Println("test")
+	l.Fields(f).Println(64, "test")
+}
+
+func BenchmarkLogEmpty(b *testing.B) {
+	b.StopTimer()
+	l := New()
+	l.SetLevel(LevelPrint)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		l.Println(42)
+	}
+}
+
+type fakewriter struct{}
+
+func (fw *fakewriter) Write(p []byte) (n int, err error) { return len(p), nil }
+
+func BenchmarkLogSimple(b *testing.B) {
+	b.StopTimer()
+	l := New()
+	l.AddOutput(&fakewriter{}, NewSimpleFormatter())
+	l.SetLevel(LevelPrint)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		l.Println(42)
+	}
+}
+
+func BenchmarkLogJSON(b *testing.B) {
+	b.StopTimer()
+	l := New()
+	l.AddOutput(&fakewriter{}, NewJSONFormatter(true))
+	l.SetLevel(LevelPrint)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		l.Println(42)
+	}
 }
