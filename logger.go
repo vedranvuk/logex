@@ -47,6 +47,7 @@ func (l *Logger) SetLevel(level LogLevel) {
 }
 
 // New returns a new Logger with no defined outputs.
+// Initial logging level is set to LevelDebug.
 func New() *Logger {
 	p := &Logger{
 		mu:  sync.Mutex{},
