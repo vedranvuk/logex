@@ -6,6 +6,7 @@ package logex
 
 import (
 	"encoding/json"
+	"sync"
 	"time"
 )
 
@@ -53,17 +54,27 @@ type fieldsMap map[FieldKey]interface{}
 
 // Fields maps keys to values in a log line.
 type Fields struct {
+	mu sync.Mutex
 	fieldsMap
 }
 
 // NewFields creates new Fields.
-func NewFields() *Fields { return &Fields{fieldsMap: make(fieldsMap)} }
+func NewFields() *Fields {
+	return &Fields{
+		mu:        sync.Mutex{},
+		fieldsMap: make(fieldsMap),
+	}
+}
 
 func (f *Fields) UnmarshalJSON(data []byte) error { return json.Unmarshal(data, &f.fieldsMap) }
 func (f *Fields) MarshalJSON() ([]byte, error)    { return json.Marshal(f.fieldsMap) }
 
 // set sets a field under key to value.
-func (f *Fields) set(key FieldKey, value interface{}) { f.fieldsMap[key] = value }
+func (f *Fields) set(key FieldKey, value interface{}) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.fieldsMap[key] = value
+}
 
 // Set sets a custom field under key to value.
 // Set returns an error if a reserved key was is used.
@@ -77,6 +88,8 @@ func (f *Fields) Set(key FieldKey, value interface{}) error {
 
 // Get gets a field by key and returns it and a truth if it exists.
 func (f *Fields) Get(key FieldKey) (val interface{}, exists bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	val, exists = f.fieldsMap[key]
 	return
 }

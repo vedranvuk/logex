@@ -40,12 +40,13 @@ func (sf SimpleFormatter) Format(fields *Fields) string {
 		s += fs + "\n"
 	}
 	if err := fields.Error(); err != nil {
-		s += fmt.Sprintf("\t%v\n", err)
+		s += fmt.Sprintf("\n\t%s\n", err.Error())
 	}
 	if file := fields.File(); file != "" {
-		s += fmt.Sprintf("\t%s (%d)\n", fields.File(), fields.Line())
+		s += fmt.Sprintf("\tCaller:\n\t%s (%d)\n", fields.File(), fields.Line())
 	}
 	if frames := fields.Frames(); frames != nil {
+		s += fmt.Sprintf("\tStack:\n")
 		for _, frame := range frames {
 			s += fmt.Sprintf("\t%s (%d)\n\t\t%s\n", frame.File(), frame.Line(), frame.Func())
 		}

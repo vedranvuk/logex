@@ -35,9 +35,9 @@ type Log interface {
 	Println(LogLevel, ...interface{})
 
 	// Caller will append the caller field to the next logged line.
-	Caller(int) Log
+	Caller(skip int) Log
 	// Stack will append the stack field to the next logged line.
-	Stack(int, int) Log
+	Stack(skip int, depth int) Log
 	// Fields will append the specified fields to the next logged line.
 	Fields(*Fields) Log
 }

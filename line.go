@@ -15,17 +15,18 @@ import (
 // It forms a log line from standard properties like timestamp, message, stack
 // and optional user defined values.
 type Line struct {
-	log    *Logger
-	fields *Fields
 	mu     sync.Mutex
+	fields *Fields
+	log    *Logger
+	cloned bool
 }
 
 // NewLine returns a new Line instance that will output to Logger l.
 func NewLine(l *Logger) *Line {
 	return &Line{
-		log:    l,
-		fields: NewFields(),
 		mu:     sync.Mutex{},
+		fields: NewFields(),
+		log:    l,
 	}
 }
 
@@ -35,7 +36,6 @@ func (p *Line) flush(level LogLevel, message string) {
 	p.fields.set(KeyMessage, message)
 	p.fields.set(KeyTime, time.Now())
 	p.log.print(p.fields)
-	p.fields = NewFields()
 }
 
 func (p *Line) Debugf(format string, args ...interface{}) {
@@ -100,22 +100,38 @@ func (p *Line) Println(level LogLevel, args ...interface{}) {
 	p.flush(LevelPrint, fmt.Sprint(args...)+"\n")
 }
 
+// lazyclone returns a clone of self if not already cloned.
+func (p *Line) lazyclone() *Line {
+	if p.cloned {
+		return p
+	}
+	nl := NewLine(p.log)
+	nl.cloned = true
+	p.fields.Walk(func(key FieldKey, val interface{}) bool {
+		nl.fields.set(key, val)
+		return true
+	})
+	return nl
+}
+
 // Caller appends the caller fields to the Line.
 func (p *Line) Caller(skip int) Log {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	l := p.lazyclone()
 	_, file, line, ok := runtime.Caller(skip)
 	if ok {
-		p.fields.set(KeyFile, file)
-		p.fields.set(KeyLine, line)
+		l.fields.set(KeyFile, file)
+		l.fields.set(KeyLine, line)
 	}
-	return p
+	return l
 }
 
 // Stack appends the stack to the Line.
 func (p *Line) Stack(skip, depth int) Log {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	l := p.lazyclone()
 	callers := make([]uintptr, depth)
 	if runtime.Callers(skip, callers) > 0 {
 		frames := runtime.CallersFrames(callers)
@@ -131,18 +147,19 @@ func (p *Line) Stack(skip, depth int) Log {
 				break
 			}
 		}
-		p.fields.set(KeyFrames, frameslice)
+		l.fields.set(KeyFrames, frameslice)
 	}
-	return p
+	return l
 }
 
 // Fields appends custom fields to Line.
 func (p *Line) Fields(fields *Fields) Log {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	l := p.lazyclone()
 	fields.Walk(func(key FieldKey, val interface{}) bool {
-		p.fields.set(key, val)
+		l.fields.Set(key, val)
 		return true
 	})
-	return p
+	return l
 }

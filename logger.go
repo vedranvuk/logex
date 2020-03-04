@@ -27,8 +27,13 @@ func (l *Logger) print(fields *Fields) {
 		return
 	}
 	for writer, formatter := range l.wrs {
-		writer.Write([]byte(formatter.Format(fields)))
+		n, err := writer.Write([]byte(formatter.Format(fields)))
+		_ = n
+		if err != nil {
+			panic(err)
+		}
 	}
+	l.Log = NewLine(l)
 }
 
 // AddOutput adds an io.Writer to Logger to be written to using the specified formatter f.
