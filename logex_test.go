@@ -52,15 +52,29 @@ func TestConcurrent(t *testing.T) {
 
 	l := New()
 
+	file, err := os.OpenFile("log.log", os.O_CREATE|os.O_TRUNC|os.O_RDWR, os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := file.Sync(); err != nil {
+			t.Fatal(err)
+		}
+		if err := file.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
 	bufjs := bytes.NewBuffer(nil)
 	buftxt := bytes.NewBuffer(nil)
-	l.AddOutput(bufjs, NewJSONFormatter(false))
+	l.AddOutput(bufjs, NewJSONFormatter(true))
 	l.AddOutput(buftxt, NewSimpleFormatter())
+	// l.AddOutput(file, NewJSONFormatter(true))
 	done := make(chan bool)
 
-	for i := 0; i < 16; i++ {
+	for i := 0; i < 5; i++ {
 		go func(threadid int) {
-			for i := 0; i < 100; i++ {
+			for i := 0; i < 5; i++ {
 				err := fmt.Errorf("Error number '%d' occured in thread '%d'", i, threadid)
 				msg := "Erroring..."
 				l.Caller(1).Stack(1, 5).Errorf(err, msg)
@@ -69,9 +83,12 @@ func TestConcurrent(t *testing.T) {
 		}(i)
 	}
 
-	for total := 0; total < 16; total++ {
+	for total := 0; total < 5; total++ {
 		<-done
 	}
+
+	// fmt.Printf("%s\n", string(buftxt.Bytes()))
+	fmt.Printf("%s\n", string(bufjs.Bytes()))
 
 	ioutil.WriteFile("logtest.json", bufjs.Bytes(), os.ModePerm)
 	ioutil.WriteFile("logtest.txt", buftxt.Bytes(), os.ModePerm)

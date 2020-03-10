@@ -40,7 +40,7 @@ func (sf SimpleFormatter) Format(fields *Fields) string {
 		s += fs + "\n"
 	}
 	if err := fields.Error(); err != nil {
-		s += fmt.Sprintf("\n\t%s\n", err.Error())
+		s += fmt.Sprintf("\t%s\n", err)
 	}
 	if file := fields.File(); file != "" {
 		s += fmt.Sprintf("\tCaller:\n\t%s (%d)\n", fields.File(), fields.Line())

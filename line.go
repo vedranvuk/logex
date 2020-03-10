@@ -74,9 +74,18 @@ func (p *Line) Warningln(args ...interface{}) {
 	p.flush(LevelWarning, fmt.Sprint(args...)+"\n")
 }
 
+type errorprinter struct {
+	err error
+}
+
+func (ep *errorprinter) Error() string {
+	return ep.err.Error()
+}
+
 func (p *Line) Errorf(err error, format string, args ...interface{}) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	// p.fields.set(KeyError, &errorprinter{err})
 	p.fields.set(KeyError, err)
 	p.flush(LevelError, fmt.Sprintf(format, args...))
 }
@@ -84,6 +93,7 @@ func (p *Line) Errorf(err error, format string, args ...interface{}) {
 func (p *Line) Errorln(err error, args ...interface{}) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	// p.fields.set(KeyError, &errorprinter{err})
 	p.fields.set(KeyError, err)
 	p.flush(LevelError, fmt.Sprint(args...)+"\n")
 }
@@ -158,7 +168,11 @@ func (p *Line) Fields(fields *Fields) Log {
 	defer p.mu.Unlock()
 	l := p.lazyclone()
 	fields.Walk(func(key FieldKey, val interface{}) bool {
-		l.fields.Set(key, val)
+		if err, ok := val.(error); ok {
+			l.fields.Set(key, &errorprinter{err})
+		} else {
+			l.fields.Set(key, val)
+		}
 		return true
 	})
 	return l
