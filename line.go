@@ -38,36 +38,42 @@ func (p *Line) flush(level LogLevel, message string) {
 	p.log.print(p.fields)
 }
 
+// Debugf will log a debug message formed from format string and args.
 func (p *Line) Debugf(format string, args ...interface{}) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.flush(LevelDebug, fmt.Sprintf(format, args...))
 }
 
+// Debugln will log args as a debug message.
 func (p *Line) Debugln(args ...interface{}) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.flush(LevelDebug, fmt.Sprint(args...)+"\n")
 }
 
+// Infof will log an info message formed from format string and args.
 func (p *Line) Infof(format string, args ...interface{}) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.flush(LevelInfo, fmt.Sprintf(format, args...))
 }
 
+// Infoln will log args as an info message.
 func (p *Line) Infoln(args ...interface{}) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.flush(LevelInfo, fmt.Sprint(args...)+"\n")
 }
 
+// Warningf will log a warning message formed from format string and args.
 func (p *Line) Warningf(format string, args ...interface{}) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.flush(LevelWarning, fmt.Sprintf(format, args...))
 }
 
+// Warningln will log args as a warning message.
 func (p *Line) Warningln(args ...interface{}) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -82,6 +88,7 @@ func (ep *errorprinter) Error() string {
 	return ep.err.Error()
 }
 
+// Errorf will log an error and an error message formed from format string and args.
 func (p *Line) Errorf(err error, format string, args ...interface{}) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -90,6 +97,7 @@ func (p *Line) Errorf(err error, format string, args ...interface{}) {
 	p.flush(LevelError, fmt.Sprintf(format, args...))
 }
 
+// Errorln will log an error and args as a warning message.
 func (p *Line) Errorln(err error, args ...interface{}) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -98,12 +106,14 @@ func (p *Line) Errorln(err error, args ...interface{}) {
 	p.flush(LevelError, fmt.Sprint(args...)+"\n")
 }
 
+// Printf will log a message with a custom logging level formed from format string and args.
 func (p *Line) Printf(level LogLevel, format string, args ...interface{}) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.flush(LevelPrint, fmt.Sprintf(format, args...))
 }
 
+// Println will log args as a message with custom logging level.
 func (p *Line) Println(level LogLevel, args ...interface{}) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -124,8 +134,8 @@ func (p *Line) lazyclone() *Line {
 	return nl
 }
 
-// Caller appends the caller fields to the Line.
-func (p *Line) Caller(skip int) Log {
+// Caller will append the caller field to the next logged line.
+func (p *Line) WithCaller(skip int) Log {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	l := p.lazyclone()
@@ -137,8 +147,8 @@ func (p *Line) Caller(skip int) Log {
 	return l
 }
 
-// Stack appends the stack to the Line.
-func (p *Line) Stack(skip, depth int) Log {
+// Stack will append the stack field to the next logged line.
+func (p *Line) WithStack(skip, depth int) Log {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	l := p.lazyclone()
@@ -162,8 +172,8 @@ func (p *Line) Stack(skip, depth int) Log {
 	return l
 }
 
-// Fields appends custom fields to Line.
-func (p *Line) Fields(fields *Fields) Log {
+// Fields will append the specified fields to the next logged line.
+func (p *Line) WithFields(fields *Fields) Log {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	l := p.lazyclone()

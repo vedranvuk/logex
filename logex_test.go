@@ -77,7 +77,7 @@ func TestConcurrent(t *testing.T) {
 			for i := 0; i < 5; i++ {
 				err := fmt.Errorf("Error number '%d' occured in thread '%d'", i, threadid)
 				msg := "Erroring..."
-				l.Caller(1).Stack(1, 5).Errorf(err, msg)
+				l.WithCaller(1).WithStack(1, 5).Errorf(err, msg)
 			}
 			done <- true
 		}(i)
