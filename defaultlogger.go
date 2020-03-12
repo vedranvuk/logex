@@ -4,7 +4,7 @@
 
 package logex
 
-var logger = New()
+var logger = New(nil)
 
 // Debugf logs a debug message formed from format string and args using the default logger.
 func Debugf(format string, args ...interface{}) { logger.Debugf(format, args...) }

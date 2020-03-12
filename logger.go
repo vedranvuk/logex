@@ -10,38 +10,68 @@ import (
 	"sync"
 )
 
+type output struct {
+	w io.Writer
+	f Formatter
+}
+
+type outputmap map[string]*output
+
+type ErrorFunc func(err error)
+
 // Logger is an implementation of Log.
 type Logger struct {
 	Log
 
-	mu  sync.Mutex
-	wrs map[io.Writer]Formatter
-	lvl LogLevel
+	mu      sync.Mutex
+	outputs outputmap
+	lvl     LogLevel
+	ef      ErrorFunc
 }
 
 // print prints fields to registered writers using associated formatters.
-func (l *Logger) print(fields *Fields) {
+func (l *Logger) print(fields *Fields, outputnames ...string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+
 	if fields.LogLevel() > l.lvl {
 		return
 	}
-	for writer, formatter := range l.wrs {
-		n, err := writer.Write([]byte(formatter.Format(fields)))
-		_ = n
-		if err != nil {
-			panic(err)
+	var err error
+	var out *output
+	var ok bool
+	if len(outputnames) > 0 {
+		for _, name := range outputnames {
+			if out, ok = l.outputs[name]; ok {
+				if _, err = out.w.Write([]byte(out.f.Format(fields))); err != nil && l.ef != nil {
+					l.ef(err)
+				}
+			}
+		}
+	} else {
+		for _, out = range l.outputs {
+			if _, err = out.w.Write([]byte(out.f.Format(fields))); err != nil && l.ef != nil {
+				l.ef(err)
+			}
 		}
 	}
 	l.Log = NewLine(l)
 }
 
-// AddOutput adds an io.Writer to Logger to be written to using the specified formatter f.
-// Duplicates are replaced, if found.
-func (l *Logger) AddOutput(w io.Writer, f Formatter) {
+// AddOutput registers an output writer with formatter f unser specified
+// name which must be unique and not empty or returns an error.
+func (l *Logger) AddOutput(name string, w io.Writer, f Formatter) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.wrs[w] = f
+
+	if name == "" {
+		return ErrInvalidName
+	}
+	if _, exists := l.outputs[name]; exists {
+		return ErrDuplicateName.WrapArgs(name)
+	}
+	l.outputs[name] = &output{w, f}
+	return nil
 }
 
 // SetLevel sets Logger's LogLevel.
@@ -53,19 +83,20 @@ func (l *Logger) SetLevel(level LogLevel) {
 
 // New returns a new Logger with no defined outputs.
 // Initial logging level is set to LevelDebug.
-func New() *Logger {
+func New(ef ErrorFunc) *Logger {
 	p := &Logger{
-		mu:  sync.Mutex{},
-		wrs: make(map[io.Writer]Formatter),
-		lvl: LevelDebug,
+		mu:      sync.Mutex{},
+		outputs: make(outputmap),
+		lvl:     LevelDebug,
+		ef:      ef,
 	}
 	p.Log = NewLine(p)
 	return p
 }
 
 // NewStd returns a new Logger initialized to stdout using a default formatter.
-func NewStd() *Logger {
-	p := New()
-	p.AddOutput(os.Stdout, NewSimpleFormatter())
+func NewStd(ef ErrorFunc) *Logger {
+	p := New(ef)
+	p.AddOutput("stdout", os.Stdout, NewSimpleFormatter())
 	return p
 }

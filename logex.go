@@ -34,6 +34,9 @@ type Log interface {
 	// Println will log args as a message with custom logging level.
 	Println(LogLevel, ...interface{})
 
+	// ToOutputs will return a Log which will output only to specified output names.
+	ToOutputs(names ...string) Log
+
 	// Caller will append the caller field to the next logged line.
 	WithCaller(skip int) Log
 	// Stack will append the stack field to the next logged line.
@@ -51,4 +54,8 @@ var (
 	ErrReservedKey = ErrLogex.WrapFormat("cannot set field '%s', key is reserved")
 	// ErrInvalidWalkFunc is returned when an invalid func was passed to Fields.Walk().
 	ErrInvalidWalkFunc = ErrLogex.Wrap("invalid walk func")
+	// ErrInvalidName is returned when an empty or invalid name is specified.
+	ErrInvalidName = ErrLogex.WrapFormat("invalid output name")
+	// ErrDuplicateName is returned when a duplicate output name was specified.
+	ErrDuplicateName = ErrLogex.WrapFormat("duplicate name '%s'")
 )

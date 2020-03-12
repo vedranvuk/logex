@@ -14,7 +14,7 @@ import (
 
 func BenchmarkLogEmpty(b *testing.B) {
 	b.StopTimer()
-	l := New()
+	l := New(nil)
 	l.SetLevel(LevelPrint)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
@@ -28,8 +28,8 @@ func (fw *fakewriter) Write(p []byte) (n int, err error) { return len(p), nil }
 
 func BenchmarkLogSimple(b *testing.B) {
 	b.StopTimer()
-	l := New()
-	l.AddOutput(&fakewriter{}, NewSimpleFormatter())
+	l := New(nil)
+	l.AddOutput("out", &fakewriter{}, NewSimpleFormatter())
 	l.SetLevel(LevelPrint)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
@@ -39,8 +39,8 @@ func BenchmarkLogSimple(b *testing.B) {
 
 func BenchmarkLogJSON(b *testing.B) {
 	b.StopTimer()
-	l := New()
-	l.AddOutput(&fakewriter{}, NewJSONFormatter(true))
+	l := New(nil)
+	l.AddOutput("out", &fakewriter{}, NewJSONFormatter(true))
 	l.SetLevel(LevelPrint)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
@@ -50,7 +50,7 @@ func BenchmarkLogJSON(b *testing.B) {
 
 func TestConcurrent(t *testing.T) {
 
-	l := New()
+	l := New(nil)
 
 	file, err := os.OpenFile("log.log", os.O_CREATE|os.O_TRUNC|os.O_RDWR, os.ModePerm)
 	if err != nil {
@@ -67,8 +67,8 @@ func TestConcurrent(t *testing.T) {
 
 	bufjs := bytes.NewBuffer(nil)
 	buftxt := bytes.NewBuffer(nil)
-	l.AddOutput(bufjs, NewJSONFormatter(true))
-	l.AddOutput(buftxt, NewSimpleFormatter())
+	l.AddOutput("out", bufjs, NewJSONFormatter(true))
+	l.AddOutput("out", buftxt, NewSimpleFormatter())
 	// l.AddOutput(file, NewJSONFormatter(true))
 	done := make(chan bool)
 
@@ -92,4 +92,28 @@ func TestConcurrent(t *testing.T) {
 
 	ioutil.WriteFile("logtest.json", bufjs.Bytes(), os.ModePerm)
 	ioutil.WriteFile("logtest.txt", buftxt.Bytes(), os.ModePerm)
+}
+
+type writer struct {
+	prefix string
+}
+
+func newwriter(prefix string) *writer { return &writer{prefix} }
+
+func (w *writer) Write(p []byte) (int, error) {
+	fmt.Printf("%s: %s", w.prefix, string(p))
+	return len(p), nil
+}
+
+func TestOutputs(t *testing.T) {
+
+	l := New(nil)
+	l.AddOutput("1", newwriter("1"), NewSimpleFormatter())
+	l.AddOutput("2", newwriter("2"), NewSimpleFormatter())
+	l.AddOutput("3", newwriter("3"), NewSimpleFormatter())
+	l.AddOutput("4", newwriter("4"), NewSimpleFormatter())
+	l.AddOutput("5", newwriter("5"), NewSimpleFormatter())
+
+	sub := l.ToOutputs("2", "4")
+	sub.Println(LevelDebug, "test")
 }

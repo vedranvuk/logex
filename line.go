@@ -15,10 +15,11 @@ import (
 // It forms a log line from standard properties like timestamp, message, stack
 // and optional user defined values.
 type Line struct {
-	mu     sync.Mutex
-	fields *Fields
-	log    *Logger
-	cloned bool
+	mu      sync.Mutex
+	fields  *Fields
+	log     *Logger
+	cloned  bool
+	outputs []string
 }
 
 // NewLine returns a new Line instance that will output to Logger l.
@@ -35,7 +36,7 @@ func (p *Line) flush(level LogLevel, message string) {
 	p.fields.set(KeyLogLevel, level)
 	p.fields.set(KeyMessage, message)
 	p.fields.set(KeyTime, time.Now())
-	p.log.print(p.fields)
+	p.log.print(p.fields, p.outputs...)
 }
 
 // Debugf will log a debug message formed from format string and args.
@@ -110,14 +111,25 @@ func (p *Line) Errorln(err error, args ...interface{}) {
 func (p *Line) Printf(level LogLevel, format string, args ...interface{}) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.flush(LevelPrint, fmt.Sprintf(format, args...))
+	p.flush(level, fmt.Sprintf(format, args...))
 }
 
 // Println will log args as a message with custom logging level.
 func (p *Line) Println(level LogLevel, args ...interface{}) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.flush(LevelPrint, fmt.Sprint(args...)+"\n")
+	p.flush(level, fmt.Sprint(args...)+"\n")
+}
+
+// clone returns a clone of self.
+func (p *Line) clone() *Line {
+	nl := NewLine(p.log)
+	nl.cloned = true
+	p.fields.Walk(func(key FieldKey, val interface{}) bool {
+		nl.fields.set(key, val)
+		return true
+	})
+	return nl
 }
 
 // lazyclone returns a clone of self if not already cloned.
@@ -125,12 +137,13 @@ func (p *Line) lazyclone() *Line {
 	if p.cloned {
 		return p
 	}
-	nl := NewLine(p.log)
-	nl.cloned = true
-	p.fields.Walk(func(key FieldKey, val interface{}) bool {
-		nl.fields.set(key, val)
-		return true
-	})
+	return p.clone()
+}
+
+// ToOutputs will return a clone which will output only to specified output names.
+func (p *Line) ToOutputs(names ...string) Log {
+	nl := p.clone()
+	nl.outputs = append(nl.outputs, names...)
 	return nl
 }
 
