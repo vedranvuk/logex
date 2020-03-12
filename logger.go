@@ -10,13 +10,19 @@ import (
 	"sync"
 )
 
+// output defines a Logger output.
 type output struct {
+	// w is the writer of the output.
 	w io.Writer
+	// f is the formatter used on the output.
 	f Formatter
 }
 
+// outputmap is a map of output names to outputs.
 type outputmap map[string]*output
 
+// ErrorFunc is a prototype of a func that is called if a logger error occurs.
+// It is optionally passed to a new Logger.
 type ErrorFunc func(err error)
 
 // Logger is an implementation of Log.
@@ -83,6 +89,7 @@ func (l *Logger) SetLevel(level LogLevel) {
 
 // New returns a new Logger with no defined outputs.
 // Initial logging level is set to LevelDebug.
+// ef is an optional ErrorFunc to call if write error occurs.
 func New(ef ErrorFunc) *Logger {
 	p := &Logger{
 		mu:      sync.Mutex{},
@@ -95,6 +102,7 @@ func New(ef ErrorFunc) *Logger {
 }
 
 // NewStd returns a new Logger initialized to stdout using a default formatter.
+// ef is an optional ErrorFunc to call if write error occurs.
 func NewStd(ef ErrorFunc) *Logger {
 	p := New(ef)
 	p.AddOutput("stdout", os.Stdout, NewSimpleFormatter())

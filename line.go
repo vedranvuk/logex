@@ -140,7 +140,6 @@ func (p *Line) lazyclone() *Line {
 	return p.clone()
 }
 
-// ToOutputs will return a clone which will output only to specified output names.
 func (p *Line) ToOutputs(names ...string) Log {
 	nl := p.clone()
 	nl.outputs = append(nl.outputs, names...)

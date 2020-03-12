@@ -34,7 +34,7 @@ type Log interface {
 	// Println will log args as a message with custom logging level.
 	Println(LogLevel, ...interface{})
 
-	// ToOutputs will return a Log which will output only to specified output names.
+	// ToOutputs will return a clone which will output only to specified output names.
 	ToOutputs(names ...string) Log
 
 	// Caller will append the caller field to the next logged line.
