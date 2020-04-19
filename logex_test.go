@@ -50,6 +50,10 @@ func BenchmarkLogJSON(b *testing.B) {
 
 func TestConcurrent(t *testing.T) {
 
+	os.Remove("log.log")
+	os.Remove("log.json")
+	os.Remove("log.txt")
+
 	l := New(nil)
 
 	file, err := os.OpenFile("log.log", os.O_CREATE|os.O_TRUNC|os.O_RDWR, os.ModePerm)
@@ -67,9 +71,8 @@ func TestConcurrent(t *testing.T) {
 
 	bufjs := bytes.NewBuffer(nil)
 	buftxt := bytes.NewBuffer(nil)
-	l.AddOutput("out", bufjs, NewJSONFormatter(true))
-	l.AddOutput("out", buftxt, NewSimpleFormatter())
-	// l.AddOutput(file, NewJSONFormatter(true))
+	l.AddOutput("json", bufjs, NewJSONFormatter(true))
+	l.AddOutput("txt", buftxt, NewSimpleFormatter())
 	done := make(chan bool)
 
 	for i := 0; i < 5; i++ {
@@ -90,8 +93,8 @@ func TestConcurrent(t *testing.T) {
 	// fmt.Printf("%s\n", string(buftxt.Bytes()))
 	fmt.Printf("%s\n", string(bufjs.Bytes()))
 
-	ioutil.WriteFile("logtest.json", bufjs.Bytes(), os.ModePerm)
-	ioutil.WriteFile("logtest.txt", buftxt.Bytes(), os.ModePerm)
+	ioutil.WriteFile("log.json", bufjs.Bytes(), os.ModePerm)
+	ioutil.WriteFile("log.txt", buftxt.Bytes(), os.ModePerm)
 }
 
 type writer struct {

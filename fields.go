@@ -161,6 +161,9 @@ func (f *Fields) Error() error {
 	if !ok {
 		return nil
 	}
+	if err == nil {
+		return nil
+	}
 	return err.(error)
 }
 
