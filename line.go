@@ -140,13 +140,14 @@ func (p *Line) lazyclone() *Line {
 	return p.clone()
 }
 
+// ToOutputs returns a Log clone which outputs to specified named outputs.
 func (p *Line) ToOutputs(names ...string) Log {
 	nl := p.clone()
 	nl.outputs = append(nl.outputs, names...)
 	return nl
 }
 
-// Caller will append the caller field to the next logged line.
+// WithCaller will append the caller field to the next logged line.
 func (p *Line) WithCaller(skip int) Log {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -159,7 +160,7 @@ func (p *Line) WithCaller(skip int) Log {
 	return l
 }
 
-// Stack will append the stack field to the next logged line.
+// WithStack will append the stack field to the next logged line.
 func (p *Line) WithStack(skip, depth int) Log {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -184,7 +185,7 @@ func (p *Line) WithStack(skip, depth int) Log {
 	return l
 }
 
-// Fields will append the specified fields to the next logged line.
+// WithFields will append the specified fields to the next logged line.
 func (p *Line) WithFields(fields *Fields) Log {
 	p.mu.Lock()
 	defer p.mu.Unlock()

@@ -22,26 +22,26 @@ const (
 	KeyLogLevel FieldKey = "loglevel"
 	// KeyError specifies that field carries an error value.
 	KeyError FieldKey = "error"
-	// KeyFrames
+	// KeyFrames specifies that field carries stack frames.
 	KeyFrames FieldKey = "frames"
 	// KeyFile specifies that field carries name of file, possibly a caller.
 	KeyFile FieldKey = "file"
 	// KeyLine specifies that field carries number of line, probably of caller.
 	KeyLine FieldKey = "line"
-	// KeyFnc
+	// KeyFunc specifies that field carries func name.
 	KeyFunc FieldKey = "func"
 )
 
 // list of reserved keys.
 var reservedkeys = map[FieldKey]struct{}{
-	KeyTime:     struct{}{},
-	KeyMessage:  struct{}{},
-	KeyLogLevel: struct{}{},
-	KeyError:    struct{}{},
-	KeyFrames:   struct{}{},
-	KeyFile:     struct{}{},
-	KeyLine:     struct{}{},
-	KeyFunc:     struct{}{},
+	KeyTime:     {},
+	KeyMessage:  {},
+	KeyLogLevel: {},
+	KeyError:    {},
+	KeyFrames:   {},
+	KeyFile:     {},
+	KeyLine:     {},
+	KeyFunc:     {},
 }
 
 // keyreserved returns if a key is reserved.
@@ -66,8 +66,11 @@ func NewFields() *Fields {
 	}
 }
 
+// UnmarshalJSON unmarshals fields from JSON data or retutns an error.
 func (f *Fields) UnmarshalJSON(data []byte) error { return json.Unmarshal(data, &f.fieldsMap) }
-func (f *Fields) MarshalJSON() ([]byte, error)    { return json.Marshal(f.fieldsMap) }
+
+// MarshalJSON marshals fields to JSON data or returns an error.
+func (f *Fields) MarshalJSON() ([]byte, error) { return json.Marshal(f.fieldsMap) }
 
 // set sets a field under key to value.
 func (f *Fields) set(key FieldKey, value interface{}) {
@@ -94,7 +97,7 @@ func (f *Fields) Get(key FieldKey) (val interface{}, exists bool) {
 	return
 }
 
-// len returns number of fields.
+// Len returns number of fields.
 func (f *Fields) Len() int {
 	return len(f.fieldsMap)
 }
@@ -146,7 +149,7 @@ func (f *Fields) Message() string {
 	return msg.(string)
 }
 
-// Message returns log level field.
+// LogLevel returns log level field.
 func (f *Fields) LogLevel() LogLevel {
 	lvl, ok := f.Get(KeyLogLevel)
 	if !ok {

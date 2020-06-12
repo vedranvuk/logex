@@ -38,11 +38,11 @@ func Printf(level LogLevel, format string, args ...interface{}) {
 // Println logs args as a message with custom logging level using the default logger.
 func Println(level LogLevel, args ...interface{}) { logger.Println(level, args...) }
 
-// Caller appends the caller field to the next logged line using the default logger.
+// WithCaller appends the caller field to the next logged line using the default logger.
 func WithCaller(skip int) Log { return logger.WithCaller(skip) }
 
-// Stack appends the stack field to the next logged line using the default logger.
+// WithStack appends the stack field to the next logged line using the default logger.
 func WithStack(skip int, depth int) Log { return logger.WithStack(skip, depth) }
 
-// Fields appends the specified fields to the next logged line using the default logger.
+// WithFields appends the specified fields to the next logged line using the default logger.
 func WithFields(f *Fields) Log { return logger.WithFields(f) }
