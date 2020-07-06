@@ -50,9 +50,11 @@ func BenchmarkLogJSON(b *testing.B) {
 
 func TestConcurrent(t *testing.T) {
 
-	os.Remove("log.log")
-	os.Remove("log.json")
-	os.Remove("log.txt")
+	defer func() {
+		os.Remove("log.log")
+		os.Remove("log.json")
+		os.Remove("log.txt")
+	}()
 
 	l := New(nil)
 
